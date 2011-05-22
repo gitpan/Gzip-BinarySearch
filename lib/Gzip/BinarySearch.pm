@@ -6,7 +6,7 @@ use Carp;
 use List::Util qw(min max);
 use Gzip::RandomAccess;
 
-our $VERSION = '0.9';
+our $VERSION = '0.91';
 
 BEGIN {
     use Exporter;
@@ -180,9 +180,15 @@ sub _compare_keys {
 # for adjacent lines with the same key. Return matching lines in same order as file.
 sub _search_surrounding_lines {
     my ($self, $query, $mid_line, $mid) = @_;
+    # Problem description:
+    # when searching for 'zits', the algorithm expands, then shrinks line-by-line
+    # at the end it trims the string to "zings\nzits\n..." and for some reason the
+    # zits offset isn't used to trim it further.
+    # you'll notice the _compare_keys thing which means $result_start is never set
+    # if we're shrinking (?)
 
-    my $block_start = $mid - length($mid_line) + 1;
-    my $block_end = $mid + length($mid_line) - 1;
+    my $block_start = max($mid - length($mid_line) + 1, 0);
+    my $block_end = min($mid + length($mid_line) - 1, $self->{max_offset});
     my $block = $self->{gzip}->extract($block_start, $block_end - $block_start);
 
     # offsets for the result range, relative to block_start
@@ -207,6 +213,8 @@ sub _search_surrounding_lines {
             $shrinking = 1;
         }
     }
+    my ($line, $offset) = $self->_first_line($block, $result_start, $result_end, $block_start == 0);
+    $result_start = $offset;
 
     $shrinking = 0;
     while (1) {

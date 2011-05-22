@@ -10,6 +10,7 @@ WriteMakefile(
     PREREQ_PM => {
         'version' => 0,
         'Test::More' => '0.47',
+        'Test::Exception' => '0.22',
         'Gzip::RandomAccess' => '0.9',
     },
 );
